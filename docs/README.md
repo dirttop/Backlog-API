@@ -1,4 +1,4 @@
-# Games-API
+# Backlog-API
 ### Version 1.1
 
 C# REST API with CRUD operations, deployed using Azure App Service. 
