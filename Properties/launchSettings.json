@@ -1,8 +1,8 @@
 {
   "profiles": {
-    "Midterm": {
+    "BacklogAPI": {
       "commandName": "Project",
-      "commandLineArgs": "--port 7236",
+      "commandLineArgs": "--port 7116",
       "launchBrowser": false
     }
   }

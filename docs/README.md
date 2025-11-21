@@ -1,21 +1,24 @@
-# Backlog-API
-### Version 1.1
+# Backlog API
+### Version 1.2
+### Note, this version is lacking any form of authetication protections. Use at your own risk. For stable versions look to the branches.
 
 C# REST API with CRUD operations, deployed using Azure App Service. 
-Developed for CS-432, Cloud Computing
+Developed for CS-432, Cloud Computing at Sacred Heart University
 
 ## Version Specific Features
-- Integrated Azure Key Vault and managed identity for improved security.
+- Restructured directory
+- Azure SQL databases for non-volatile storage (production environment untested)
+- Cleaned dependencies
+- Unused KeyVault helper class
 
 ## Introduction
 
-This API, inspired by [SteamDB](https://steamdb.info/), is meant to catalogue and store Steam Games and relevant information about them. 
-For stable builds look to version branches. The main branch is unstable and may be subject to changes.
+This API is for cataloguing and tracking Steam Games in your backlog. For stable builds look to version branches. The main branch is unstable and may be subject to changes.
 
 ## Getting Started
-This section is if you want to deploy the Games-API on your own machine or Azure subscription.
+This section will get you started with deploying the API to Microsoft Azure for use.
 
->If you want to use the Games-API, go [here](#using-the-games-api).
+>If you want to learn how to use the Games-API, go [here](#using-the-games-api).
 
 ### Prerequisites
 - Development Environment
@@ -23,8 +26,7 @@ This section is if you want to deploy the Games-API on your own machine or Azure
 
 ### Dependencies
 - C# Compiler
-- Azure Functions
-- Azure Resources
+- Azure Tools Extension Pack
 - Azurite
 
 ### Recommended Packages For Testing
@@ -50,15 +52,60 @@ This section is if you want to deploy the Games-API on your own machine or Azure
 
 <br><img width="735" height="127" alt="Screenshot 2025-10-09 at 12 04 32 PM" src="https://github.com/user-attachments/assets/5cb6574b-8235-42b3-b3c4-1b3694d73bd9" />
 
+### Database Setup
+
+> **This requires access to the Azure portal.** <br>
+
+&emsp;Under the resource group which contains your Function App, create a new resource.
+
+&emsp;Search for AzureSQL and create a new AzureSQL Server and Database with preffered settings.
+
+- Set your account as the Entra Administrator for the AzureSQL for local testing.
+
+> **If you don't set it during creation, you can set it in the AzureSQL Server Settings under 'Microsoft Entra ID'** <br>
+
+&emsp;Upon creation of your new resources, use the SQL Server extension within your environment to connect to the SQL server. This will depend on your IDE.
+
+&emsp;Once connected, it's time to set up the databases.
+
+&emsp;First, in local settings, you need to add your connection string which can be found under the AzureSQL Database resource.
+
+``` 
+  "ConnectionStrings": {
+    "DefaultConnection": "STRING HERE";
+  }
+```
+> **If this runs an error, create a json called appsettings.Development.json and add it there as well.** <br>
+
+&emsp;Once that's set up it's time to create our database.
+
+&emsp;You may need to login with the Azure CLI with:
+
+``` az login ```
+
+&emsp;In a new terminal run:
+
+``` dotnet ef migrations add InitialCreate```
+
+> **If this fails, ensure that your database server is connected.** <br>
+
+&emsp;After completion run:
+
+``` dotnet ef database update ```
+
+&emsp;This will create a new migration, which should be reflected with a new table in your database. You can now move on to testing locally.
+
 ### Running Locally
 
-&emsp;In a new terminal:
+&emsp;In a new terminal run:
 ``` func start ```
 
 &emsp;Test with local route.
 > **EX: http://localhost:7071/api/games**
 
 ### Deployment
+
+> **Note that this version is untested in a production setting.** <br>
 
 &emsp;Create a Function App within Azure prior to deploying with desired settings.
 
@@ -72,21 +119,9 @@ This section is if you want to deploy the Games-API on your own machine or Azure
 
 > Your deployment domain will now be available on Azure. For instruction on testing go [here](#using-the-games-api).
 
-### Setting Up Managed Identity and Key Vault
+###
 
-&emsp; In order to use your deployed API, a Key Vault containing your API key must be created, and the Function App must be granted access.
-
-&emsp; The following steps outline the process, for further clarification look to [this video](https://www.youtube.com/watch?v=b21EQvfjvHc&t=789s).
-- Enable managed idenity in your Function App
-- Create a Key Vault
-- Give yourself Adiministatrative Access to your new Key Vault
-- Create a Secret for your API Key
-- Give the Key Vault Secrets User role assignment to your Function App
-- Add a reference to the Key Vault in your Function App configuration
-- Save your configuration and await confirmation from Azure
-- Test your function app using your new API Key
-
-## Using the Games-API
+## Using the Backlog API
 
 ### URL
 
@@ -94,22 +129,23 @@ This section is if you want to deploy the Games-API on your own machine or Azure
 
 ### Authentication
 
-To access the Games-API endpoints a valid authentication key must be presented.
-The key must be included in the HTTP request header as a key/value pair.
-Access to the API is currently unavailable publically.
-Any materials presented in the documentation containing a key present an outdated Secret.
+As mentioned above, this version lacks authentication and endpoints can only be accessed by Entra admins.
 
 ## Game Parameters
-> Every game object contains the following JSON parameters, with only Title and SteamAppID being required fields.
-> SteamAppID is a unique value. Official SteamAppID values can be found through [SteamDB](https://steamdb.info/).
+> Every game entity contains the following JSON parameters, with only Title and SteamAppID being required fields.
+> SteamAppID is the primary key. Official SteamAppID values can be found through [SteamDB](https://steamdb.info/).
 
 ```
 {
+    "SteamAppID": 1
     "Title": "Game Title",
     "Genre": "Genre Name",
     "Developer": "Developer Name",
     "ReleaseYear": 0000,
-    "SteamAppID": 1
+    "Completed": True,
+    "PlaytimeHours": 0.0,
+    "Rating": 0.0,
+    "Review": "Review"
 }
 ```
 
