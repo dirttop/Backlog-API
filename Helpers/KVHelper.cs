@@ -1,42 +1,26 @@
 using System;
 using System.Threading.Tasks;
-using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
+using Microsoft.Extensions.Logging;
+using Azure;
 
 namespace BacklogAPI.Helpers
 {
-    public class KVHelper
+    public interface IKVHelper
+    {
+        Task<string> GetSecretAsync(string secretName);
+    }
+
+    public class KVHelper : IKVHelper
     {
         private readonly SecretClient _client;
-
-        public KVHelper()
+        private readonly ILogger<KVHelper> _logger;
+        public KVHelper(SecretClient client, ILogger<KVHelper> logger)
         {
-            string kvName = Environment.GetEnvironmentVariable("KEY_VAULT_NAME");
-            if (string.IsNullOrEmpty(kvName))
-            {
-                throw new InvalidOperationException("Environment variable 'KEY_VAULT_NAME' is not set.");
-            }
-
-            var kvUri = $"https://{kvName}.vault.azure.net/";
-
-            var managedIdentityClientId = Environment.GetEnvironmentVariable("MANAGED_IDENTITY_CLIENT_ID");
-            
-            DefaultAzureCredentialOptions options = null;
-
-            if (!string.IsNullOrEmpty(managedIdentityClientId))
-            {
-                options = new DefaultAzureCredentialOptions
-                {
-                    ManagedIdentityClientId = managedIdentityClientId
-                };
-            }
-
-            var credential = (options == null)
-                ? new DefaultAzureCredential()
-                : new DefaultAzureCredential(options);
-
-            _client = new SecretClient(new Uri(kvUri), credential);
+            _client = client ?? throw new ArgumentNullException(nameof(client));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
+
         public async Task<string> GetSecretAsync(string secretName)
         {
             try
@@ -44,14 +28,14 @@ namespace BacklogAPI.Helpers
                 KeyVaultSecret secret = await _client.GetSecretAsync(secretName);
                 return secret.Value;
             }
-            catch (Azure.RequestFailedException ex) when (ex.Status == 404)
+            catch (RequestFailedException ex) when (ex.Status == 404)
             {
-                Console.WriteLine($"Secret '{secretName}' not found.");
-                return null;
+                _logger.LogWarning("Secret '{SecretName}' not found in Key Vault.", secretName);
+                return string.Empty;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error retrieving secret: {ex.Message}");
+                _logger.LogError(ex, "Error retrieving secret '{SecretName}'.", secretName);
                 throw;
             }
         }

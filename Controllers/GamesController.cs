@@ -1,10 +1,12 @@
 using BacklogAPI.Data;
 using BacklogAPI.Models;
+using BacklogAPI.Helpers;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Net;
+using System.Linq;
 
 namespace BacklogAPI.Controllers;
 
@@ -12,11 +14,25 @@ public class GamesController
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<GamesController> _logger;
-
-    public GamesController(ApplicationDbContext context, ILogger<GamesController> logger)
+    private readonly IKVHelper _kvHelper;
+    private readonly ApiKeySettings _apiKeySettings;
+    public GamesController(ApplicationDbContext context, ILogger<GamesController> logger, IKVHelper kvHelper, ApiKeySettings apiKeySettings)
     {
         _context = context;
         _logger = logger;
+        _kvHelper = kvHelper;
+        _apiKeySettings = apiKeySettings;
+    }
+
+    private HttpResponseData? ValidateApiKey(HttpRequestData req)
+    {
+        if (!req.Headers.TryGetValues("X-Api-Key", out var values) || values.FirstOrDefault() != _apiKeySettings.ApiKey)
+        {
+            _logger.LogWarning("Invalid or missing API key.");
+            return req.CreateResponse(HttpStatusCode.Unauthorized);
+        }
+        
+        return null;
     }
 
     [Function("GetGames")]
@@ -24,6 +40,9 @@ public class GamesController
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "games")] 
         HttpRequestData req)
     {
+        var authResponse = ValidateApiKey(req);
+        if (authResponse != null) return authResponse;
+
         _logger.LogInformation("Processing GetGames.");
 
         var games = await _context.Games.ToListAsync();
@@ -39,6 +58,9 @@ public class GamesController
         HttpRequestData req, 
         int id)
     {
+        var authResponse = ValidateApiKey(req);
+        if (authResponse != null) return authResponse;
+
         _logger.LogInformation($"Processing GetGameById: {id}");
 
         var game = await _context.Games.FindAsync(id);
@@ -59,6 +81,9 @@ public class GamesController
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "games")] 
         HttpRequestData req)
     {
+        var authResponse = ValidateApiKey(req);
+        if (authResponse != null) return authResponse;
+
         _logger.LogInformation("Processing CreateGame.");
 
         Game? newGame;
@@ -68,6 +93,11 @@ public class GamesController
             if (newGame == null)
             {
                 return req.CreateResponse(HttpStatusCode.BadRequest);
+            }
+            if (newGame.SteamAppId == _context.Games.Find(newGame.SteamAppId)?.SteamAppId)
+            {
+                _logger.LogWarning($"Game with SteamAppId {newGame.SteamAppId} already exists.");
+                return req.CreateResponse(HttpStatusCode.Conflict);
             }
         }
         catch (Exception ex)
@@ -98,6 +128,9 @@ public class GamesController
         HttpRequestData req,
         int id)
     {
+        var authResponse = ValidateApiKey(req);
+        if (authResponse != null) return authResponse;
+
         _logger.LogInformation($"Processing UpdateGame: {id}");
 
         var existingGame = await _context.Games.FindAsync(id);
@@ -144,6 +177,9 @@ public class GamesController
         HttpRequestData req,
         int id)
     {
+        var authResponse = ValidateApiKey(req);
+        if (authResponse != null) return authResponse;
+        
         _logger.LogInformation($"Processing DeleteGame: {id}");
 
         var gameToDelete = await _context.Games.FindAsync(id);

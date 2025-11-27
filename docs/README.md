@@ -1,15 +1,11 @@
 # Backlog API
-### Version 1.2
-### Note, this version is lacking any form of authetication protections. Use at your own risk. For stable versions look to the branches.
+### Version 1.3
 
 C# REST API with CRUD operations, deployed using Azure App Service. 
 Developed for CS-432, Cloud Computing at Sacred Heart University
 
 ## Version Specific Features
-- Restructured directory
-- Azure SQL databases for non-volatile storage (production environment untested)
-- Cleaned dependencies
-- Unused KeyVault helper class
+- Key vault protected Secrets
 
 ## Introduction
 
@@ -71,11 +67,11 @@ This section will get you started with deploying the API to Microsoft Azure for 
 &emsp;First, in local settings, you need to add your connection string which can be found under the AzureSQL Database resource.
 
 ``` 
-  "ConnectionStrings": {
-    "DefaultConnection": "STRING HERE";
+  "Values": {
+  ...
+  "DefaultConnection": "STRING HERE";
   }
 ```
-> **If this runs an error, create a json called appsettings.Development.json and add it there as well.** <br>
 
 &emsp;Once that's set up it's time to create our database.
 
@@ -109,7 +105,29 @@ This section will get you started with deploying the API to Microsoft Azure for 
 
 &emsp;Create a Function App within Azure prior to deploying with desired settings.
 
-&emsp;Navigate to the Azure Functions button in your local workspace and select 'Deploy to Azure'
+&emsp;Then, within the Function App, under Identity enable System Assigned Identity. 
+
+&emsp;Now we need to set up a Key Vault and Managed Identities. Create a new Key Vault resource under your API Resource Group.
+
+&emsp;In the Key Vault add two new secrets
+- ApiKey (With any Key string)
+- DefaultConnection (Connection string can be found under the SQL Database)
+
+&emsp;Within the Key Vault under Access Control (IAM) add the Key Vault Secret Officer role to your newly System Assigned Function App member.
+
+&emsp;Then, add a Secret to the Function App named 'KEY_VAULT_NAME' with the name of your Key Vault resource.
+
+&emsp;Under the Database Server, go to the Security section and open the Networking tab. Under exceptions, check 'Allow Azure services and resources to access this server'.
+
+&emsp;Finally, within your Database resource under the Query Editor, run the following query to allow the Function App access to the database.
+
+``` 
+CREATE USER [FUNCTION APP NAME] FROM EXTERNAL PROVIDER;
+ALTER ROLE db_datareader ADD MEMBER [FUNCTION APP NAME];
+ALTER ROLE db_datawriter ADD MEMBER [FUNCTION APP NAME];
+```
+
+&emsp;Then, navigate to the Azure Functions button in your local workspace and select 'Deploy to Azure'
 
 > Screenshots show deployment in Visual Studio Code
 <img width="541" height="342" alt="Screenshot 2025-10-09 at 11 52 52 AM" src="https://github.com/user-attachments/assets/710701e0-1f6b-4d85-8065-6603d3e3275d" />
