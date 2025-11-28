@@ -4,11 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
-using BacklogAPI.Data;
-
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using BacklogAPI.Helpers;
+using BacklogAPI.Data;
 using System;
 
 var builder = FunctionsApplication.CreateBuilder(args);

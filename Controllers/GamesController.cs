@@ -94,7 +94,9 @@ public class GamesController
             {
                 return req.CreateResponse(HttpStatusCode.BadRequest);
             }
-            if (newGame.SteamAppId == _context.Games.Find(newGame.SteamAppId)?.SteamAppId)
+            
+            var existingGameCheck = await _context.Games.FindAsync(newGame.SteamAppId);
+            if (existingGameCheck != null)
             {
                 _logger.LogWarning($"Game with SteamAppId {newGame.SteamAppId} already exists.");
                 return req.CreateResponse(HttpStatusCode.Conflict);
@@ -160,6 +162,8 @@ public class GamesController
         existingGame.Developer = updatedGame.Developer;
         existingGame.ReleaseYear = updatedGame.ReleaseYear;
         existingGame.Completed = updatedGame.Completed;
+        existingGame.CompletedOn = updatedGame.CompletedOn;
+        existingGame.Dropped = updatedGame.Dropped;
         existingGame.PlaytimeHours = updatedGame.PlaytimeHours;
         existingGame.Rating = updatedGame.Rating;
         existingGame.Review = updatedGame.Review;
@@ -179,7 +183,7 @@ public class GamesController
     {
         var authResponse = ValidateApiKey(req);
         if (authResponse != null) return authResponse;
-        
+
         _logger.LogInformation($"Processing DeleteGame: {id}");
 
         var gameToDelete = await _context.Games.FindAsync(id);
@@ -193,5 +197,69 @@ public class GamesController
         await _context.SaveChangesAsync();
 
         return req.CreateResponse(HttpStatusCode.NoContent);
+    }
+
+    [Function("ValidateGames")]
+    public async Task<HttpResponseData> ValidateGames(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "patch", Route = "games/validate")] 
+        HttpRequestData req)
+    {
+        var authResponse = ValidateApiKey(req);
+        if (authResponse != null) return authResponse;
+
+        _logger.LogInformation("Processing ValidateGames (Bulk).");
+
+        var allGames = await _context.Games.ToListAsync();
+        int updatedCount = 0;
+        var now = DateTime.UtcNow;
+
+        foreach (var game in allGames)
+        {
+            bool isModified = false;
+
+            if (game.ReleaseYear.HasValue && game.ReleaseYear.Value > now.Year && game.Completed)
+            {
+                game.Completed = false;
+                game.CompletedOn = null;
+                isModified = true;
+            }
+
+            bool hasRating = game.Rating.HasValue && game.Rating > 0;
+            bool hasReview = !string.IsNullOrEmpty(game.Review);
+
+            if ((hasRating || hasReview) && !game.Completed)
+            {
+                game.Completed = true;
+                isModified = true;
+            }
+
+            if (game.Dropped && game.Completed)
+            {
+                game.Dropped = false;
+                isModified = true;
+            }
+
+            game.ValidatedOn = now;
+            
+            if (isModified)
+            {
+                updatedCount++;
+            }
+        }
+
+        if (updatedCount > 0 || allGames.Count > 0)
+        {
+            await _context.SaveChangesAsync();
+        }
+
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        var result = new
+        {
+            updatedCount = updatedCount,
+            timestamp = now,
+            message = $"Validation complete. {updatedCount} games updated."
+        };
+        await response.WriteAsJsonAsync(result);
+        return response;
     }
 }

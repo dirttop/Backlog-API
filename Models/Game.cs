@@ -14,7 +14,10 @@ public class Game
     public string? Developer { get; set; }
     public int? ReleaseYear { get; set; }
     public bool Completed { get; set; }
+    public DateTime? CompletedOn { get; set; }
+    public bool Dropped { get; set; }
     public float? PlaytimeHours { get; set; }
     public float? Rating { get; set; }
     public string? Review { get; set; }
+    public DateTime? ValidatedOn { get; set;}
 }

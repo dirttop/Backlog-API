@@ -1,11 +1,11 @@
 # Backlog API
-### Version 1.3
+### Version 1.4
 
 C# REST API with CRUD operations, deployed using Azure App Service. 
 Developed for CS-432, Cloud Computing at Sacred Heart University
 
 ## Version Specific Features
-- Key vault protected Secrets
+- ValidateGames PATCH endpoint
 
 ## Introduction
 
@@ -14,7 +14,7 @@ This API is for cataloguing and tracking Steam Games in your backlog. For stable
 ## Getting Started
 This section will get you started with deploying the API to Microsoft Azure for use.
 
->If you want to learn how to use the Games-API, go [here](#using-the-games-api).
+>If you want to learn how to use the Backlog-API, go [here](#using-the-backlog-api).
 
 ### Prerequisites
 - Development Environment
@@ -135,7 +135,7 @@ ALTER ROLE db_datawriter ADD MEMBER [FUNCTION APP NAME];
 <br>&emsp;Select desired Function App and wait for deployment to conclude.
 <br><img width="671" height="128" alt="Screenshot 2025-10-09 at 11 57 09 AM" src="https://github.com/user-attachments/assets/32c2dd51-d16f-423a-a562-565e5ba47afe" />
 
-> Your deployment domain will now be available on Azure. For instruction on testing go [here](#using-the-games-api).
+> Your deployment domain will now be available on Azure. For instruction on testing go [here](#using-the-backlog-api).
 
 ###
 
@@ -147,7 +147,7 @@ ALTER ROLE db_datawriter ADD MEMBER [FUNCTION APP NAME];
 
 ### Authentication
 
-As mentioned above, this version lacks authentication and endpoints can only be accessed by Entra admins.
+Use of the API requires the API Key. This version is currently private. In order to use the API, follow the setup instructions on a personal Azure account.
 
 ## Game Parameters
 > Every game entity contains the following JSON parameters, with only Title and SteamAppID being required fields.
@@ -155,15 +155,18 @@ As mentioned above, this version lacks authentication and endpoints can only be 
 
 ```
 {
-    "SteamAppID": 1
+    "SteamAppID": 1 //Primary key
     "Title": "Game Title",
     "Genre": "Genre Name",
     "Developer": "Developer Name",
     "ReleaseYear": 0000,
     "Completed": True,
+    "CompletedOn": 00-00-00T00:00, //Set automatically but can be modified
+    "Dropped": False,
     "PlaytimeHours": 0.0,
     "Rating": 0.0,
-    "Review": "Review"
+    "Review": "Review",
+    "ValidatedOn": 00-00-00T00:00 //System set, not modifiable
 }
 ```
 
@@ -323,6 +326,12 @@ curl -L -X DELETE "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebs
 ```
 Game with SteamAppId: 730 deleted successfully.
 ```
+
+### ValidateGames
+
+>**PATCH /api/games/validate**
+
+&emsp;Ensure games all follow predefined business rules.
 
 ## Possible Errors
 
