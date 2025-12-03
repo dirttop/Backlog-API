@@ -1,7 +1,7 @@
 # Backlog API
 ### Version 1.4
 
-C# REST API with CRUD operations, deployed using Azure App Service. 
+C# REST API with CRUD operations, deployed using Azure Function App. 
 Developed for CS-432, Cloud Computing at Sacred Heart University
 
 ## Version Specific Features
@@ -24,6 +24,7 @@ This section will get you started with deploying the API to Microsoft Azure for 
 - C# Compiler
 - Azure Tools Extension Pack
 - Azurite
+- Microsoft EntityFrameworkCore
 
 ### Recommended Packages For Testing
 - Thunder Client
@@ -47,6 +48,26 @@ This section will get you started with deploying the API to Microsoft Azure for 
 - Wait for setup to conclude.
 
 <br><img width="735" height="127" alt="Screenshot 2025-10-09 at 12 04 32 PM" src="https://github.com/user-attachments/assets/5cb6574b-8235-42b3-b3c4-1b3694d73bd9" />
+
+<br>
+
+&emsp;Then, in a fresh Powershell terminal, install the Azure CLI
+
+For Windows: ``` winget install --exact --id Microsoft.AzureCLI ```
+
+For Mac: ``` brew update && brew install azure-cli ```
+
+For Linux: ``` curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash ```
+
+### Project Structure
+
+**Models** - Defines the Game structure.
+
+**Controllers** - Handles API endpoints, 
+
+**Data** - 
+
+**Helpers**
 
 ### Database Setup
 
@@ -75,7 +96,7 @@ This section will get you started with deploying the API to Microsoft Azure for 
 
 &emsp;Once that's set up it's time to create our database.
 
-&emsp;You may need to login with the Azure CLI with:
+&emsp; Login to the Azure CLI with:
 
 ``` az login ```
 
@@ -91,6 +112,8 @@ This section will get you started with deploying the API to Microsoft Azure for 
 
 &emsp;This will create a new migration, which should be reflected with a new table in your database. You can now move on to testing locally.
 
+### Key Vault Setup
+
 ### Running Locally
 
 &emsp;In a new terminal run:
@@ -100,8 +123,6 @@ This section will get you started with deploying the API to Microsoft Azure for 
 > **EX: http://localhost:7071/api/games**
 
 ### Deployment
-
-> **Note that this version is untested in a production setting.** <br>
 
 &emsp;Create a Function App within Azure prior to deploying with desired settings.
 
@@ -137,7 +158,11 @@ ALTER ROLE db_datawriter ADD MEMBER [FUNCTION APP NAME];
 
 > Your deployment domain will now be available on Azure. For instruction on testing go [here](#using-the-backlog-api).
 
-###
+### Azure Enhancements
+
+#### 
+
+
 
 ## Using the Backlog API
 
