@@ -1,5 +1,5 @@
 # Backlog API
-### Version 1.4
+### Version 2.0
 
 C# REST API with CRUD operations, deployed using Azure Function App. 
 Developed for CS-432, Cloud Computing at Sacred Heart University
@@ -61,13 +61,13 @@ For Linux: ``` curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash ```
 
 ### Project Structure
 
-**Models** - Defines the Game structure.
+**Models** - Defines the data structure and business entities (e.g., `Game.cs`).
 
-**Controllers** - Handles API endpoints, 
+**Controllers** - Handles API endpoints, HTTP requests, and responses (e.g., `GamesController.cs`).
 
-**Data** - 
+**Data** - Manages database context and configuration (e.g., `ApplicationDbContext.cs`, `ApplicationDbContextFactory.cs`).
 
-**Helpers**
+**Helpers** - Contains utility classes for shared functionality (e.g., `KVHelper.cs` for Key Vault operations, `ApiKeyHelper.cs`).
 
 ### Database Setup
 
@@ -75,7 +75,7 @@ For Linux: ``` curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash ```
 
 &emsp;Under the resource group which contains your Function App, create a new resource.
 
-&emsp;Search for AzureSQL and create a new AzureSQL Server and Database with preffered settings.
+&emsp;Search for AzureSQL and create a new AzureSQL Server and Database with preferred settings.
 
 - Set your account as the Entra Administrator for the AzureSQL for local testing.
 
@@ -114,7 +114,19 @@ For Linux: ``` curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash ```
 
 ### Key Vault Setup
 
+1.  **Create Key Vault**: Create a new Key Vault resource in your Azure Resource Group.
+2.  **Add Secrets**:
+    *   `ApiKey`: A strong, random string to be used as your API Key.
+    *   `DefaultConnection`: Your Azure SQL Database connection string.
+3.  **Managed Identity**:
+    *   Enable **System Assigned Identity** on your Function App.
+    *   Go to your Key Vault -> **Access Control (IAM)** -> **Add Role Assignment**.
+    *   Assign the **Key Vault Secrets User** role to your Function App's identity.
+    *   *Note: For local development, ensure your personal Azure account also has this role.*
+
 ### Running Locally
+
+> **Prerequisite:** You must have the `KEY_VAULT_NAME` environment variable set and be logged in via Azure CLI (`az login`) to access the Key Vault.
 
 &emsp;In a new terminal run:
 ``` func start ```
@@ -158,9 +170,23 @@ ALTER ROLE db_datawriter ADD MEMBER [FUNCTION APP NAME];
 
 > Your deployment domain will now be available on Azure. For instruction on testing go [here](#using-the-backlog-api).
 
-### Azure Enhancements
+### Governance Features
 
-#### 
+This API implements several governance and security features to ensure production-grade reliability and auditability.
+
+#### 1. API Key Management via Azure Key Vault
+*   **Implementation**: The API Key is never stored in source control or configuration files. It is securely stored in Azure Key Vault as a secret named `ApiKey`.
+*   **Access**: The Function App retrieves this key at runtime using **Managed Identity**, ensuring zero-trust security.
+*   **Rotation**: This setup allows for easy key rotation without redeploying the application code.
+
+#### 2. Diagnostic Logging with Application Insights
+*   **Observability**: Application Insights is integrated to track request rates, failures, and performance metrics.
+*   **Traceability**: `ILogger` is used throughout the application to log critical events (e.g., "Processing CreateGame").
+*   **Auditing**: Failed requests and exceptions are captured with full stack traces to support debugging and security auditing.
+
+#### 3. Validation Timestamping
+*   **Data Integrity**: The `ValidateGames` endpoint updates the `validatedOn` timestamp for every game entity it processes.
+*   **Lifecycle Management**: This field provides a clear audit trail of when the data was last checked against business rules, ensuring the backlog remains up-to-date. 
 
 
 
@@ -172,26 +198,26 @@ ALTER ROLE db_datawriter ADD MEMBER [FUNCTION APP NAME];
 
 ### Authentication
 
-Use of the API requires the API Key. This version is currently private. In order to use the API, follow the setup instructions on a personal Azure account.
+Use of the API requires the API Key passed in the `X-Api-Key` header. This version is currently private. In order to use the API, follow the setup instructions on a personal Azure account.
 
 ## Game Parameters
-> Every game entity contains the following JSON parameters, with only Title and SteamAppID being required fields.
-> SteamAppID is the primary key. Official SteamAppID values can be found through [SteamDB](https://steamdb.info/).
+> Every game entity contains the following JSON parameters, with only title and steamAppId being required fields.
+> steamAppId is the primary key. Official steamAppId values can be found through [SteamDB](https://steamdb.info/).
 
 ```
 {
-    "SteamAppID": 1 //Primary key
-    "Title": "Game Title",
-    "Genre": "Genre Name",
-    "Developer": "Developer Name",
-    "ReleaseYear": 0000,
-    "Completed": True,
-    "CompletedOn": 00-00-00T00:00, //Set automatically but can be modified
-    "Dropped": False,
-    "PlaytimeHours": 0.0,
-    "Rating": 0.0,
-    "Review": "Review",
-    "ValidatedOn": 00-00-00T00:00 //System set, not modifiable
+    "steamAppId": 1, //Primary key
+    "title": "Game Title",
+    "genre": "Genre Name",
+    "developer": "Developer Name",
+    "releaseYear": 0000,
+    "completed": true,
+    "completedOn": "0000-00-00T00:00:00", //Set automatically but can be modified
+    "dropped": false,
+    "playtimeHours": 0.0,
+    "rating": 0.0,
+    "review": "Review",
+    "validatedOn": "0000-00-00T00:00:00" //System set, not modifiable
 }
 ```
 
@@ -201,7 +227,7 @@ Use of the API requires the API Key. This version is currently private. In order
 
 > **POST /api/games**
 
-&emsp;Creates a new game entry. Only Title and SteamAppID are required parameters.
+&emsp;Creates a new game entry. Only title and steamAppId are required parameters.
 
 #### Request
 
@@ -209,13 +235,13 @@ Use of the API requires the API Key. This version is currently private. In order
 ```
 curl -X POST "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games" \
 -H "Content-Type: application/json" \
--H "Key: INSERT_KEY_HERE" \
+-H "X-Api-Key: INSERT_KEY_HERE" \
 -d '{
-    "Title": "Game Title",
-    "Genre": "Genre Name",
-    "Developer": "Developer Name",
-    "ReleaseYear": 0000,
-    "SteamAppID": 1
+    "title": "Game Title",
+    "genre": "Genre Name",
+    "developer": "Developer Name",
+    "releaseYear": 0000,
+    "steamAppId": 1
 }'
 ```
 
@@ -223,11 +249,11 @@ curl -X POST "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.
 
 ```
 {
-    "Title": "Counter-Strike 2",
-    "Genre": "FPS",
-    "Developer": "Valve",
-    "ReleaseYear": "2012",
-    "SteamAppID": 730
+    "title": "Counter-Strike 2",
+    "genre": "FPS",
+    "developer": "Valve",
+    "releaseYear": 2012,
+    "steamAppId": 730
 }
 ```
 
@@ -249,13 +275,13 @@ curl -X POST "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.
 
 >**GET /api/games**
 
-&emsp;Retrieves all games stored in the API. Games are sorted by their SteamAppID in ascending order. Every SteamAppID is unique.
+&emsp;Retrieves all games stored in the API. Games are sorted by their steamAppId in ascending order. Every steamAppId is unique.
 
 #### Request
 #### bash / zsh
 ```
 curl -L -X GET "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games/"
--H "Key: INSERT_KEY_HERE"
+-H "X-Api-Key: INSERT_KEY_HERE"
 ```
 #### Response (JSON)
 #### Code: 200
@@ -281,16 +307,16 @@ curl -L -X GET "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsite
 
 ### GetGameByID
 
->**GET /api/games/{SteamAppId:int}**
+>**GET /api/games/{steamAppId:int}**
 
-&emsp;Retrieves a games information by their SteamAppID.
+&emsp;Retrieves a game's information by its steamAppId.
 
 #### Request
 
 #### bash / zsh
 ```
-curl -L -X GET "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games/{SteamAppId:int}"
--H "Key: INSERT_KEY_HERE"
+curl -L -X GET "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games/{steamAppId:int}"
+-H "X-Api-Key: INSERT_KEY_HERE"
 ```
 #### Response (JSON)
 #### Code: 200
@@ -303,23 +329,48 @@ curl -L -X GET "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsite
   "steamAppId": 730
 }
 ```
+### GetGameByTitle
+
+>**GET /api/games/{title}**
+
+&emsp;Retrieves a game's information by its Title.
+
+#### Request
+
+#### bash / zsh
+```
+curl -L -X GET "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games/{title}"
+-H "X-Api-Key: INSERT_KEY_HERE"
+```
+#### Response (JSON)
+#### Code: 200
+```
+{
+  "title": "Counter-Strike 2",
+  "genre": "FPS",
+  "developer": "Valve",
+  "releaseYear": 2012,
+  "steamAppId": 730
+}
+```
+
 ### UpdateGame
 
->**PUT /api/games/{SteamAppId:int}**
+>**PUT /api/games/{steamAppId:int}**
 
-&emsp;Update a games information by their SteamAppID. SteamAppID cannot be updated.
+&emsp;Update a game's information by its steamAppId. steamAppId cannot be updated.
 
 #### Request
 #### bash / zsh
 ```
-curl -X PUT "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games/{SteamAppId:int}" \
+curl -X PUT "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games/{steamAppId:int}" \
 -H "Content-Type: application/json" \
--H "Key: INSERT_KEY_HERE" \
+-H "X-Api-Key: INSERT_KEY_HERE" \
 -d '{
-    "Title": "Game Title",
-    "Genre": "Genre Name",
-    "Developer": "Developer Name",
-    "ReleaseYear": 0000
+    "title": "Game Title",
+    "genre": "Genre Name",
+    "developer": "Developer Name",
+    "releaseYear": 0000
 }'
 ```
 #### Response (JSON)
@@ -336,20 +387,20 @@ curl -X PUT "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.n
 
 ### DeleteGame
 
->**DELETE /api/games/{SteamAppId:int}**
+>**DELETE /api/games/{steamAppId:int}**
 
-&emsp;Delete a game by their SteamAppID.
+&emsp;Delete a game by its steamAppId.
 
 #### Request
 #### bash / zsh
 ```
-curl -L -X DELETE "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games/{SteamAppId:int}"
--H "Key: INSERT_KEY_HERE"
+curl -L -X DELETE "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games/{steamAppId:int}"
+-H "X-Api-Key: INSERT_KEY_HERE"
 ```
 #### Response
 #### Code: 200
 ```
-Game with SteamAppId: 730 deleted successfully.
+Game with steamAppId: 730 deleted successfully.
 ```
 
 ### ValidateGames
@@ -365,12 +416,12 @@ Game with SteamAppId: 730 deleted successfully.
 | Endpoint | Code    | Message    |
 | :---:   | :---: | :---: |
 | All | 401   | Unauthorized   |
-| CreateGame | 400   | Title and unique non-zero ID are required.   |
-| CreateGame | 400   | A game with this ID already exists.   |
-| GetGameByID | 404   | Game not found. Input valid ID.   |
+| CreateGame | 400   | title and unique non-zero steamAppId are required.   |
+| CreateGame | 400   | A game with this steamAppId already exists.   |
+| GetGameByID | 404   | Game not found. Input valid steamAppId.   |
 | UpdateGame | 400   | Invalid game data.   |
-| UpdateGame | 404   | Game not found. Input valid ID.   |
-| DeleteGame | 404   | Game not found. Input valid ID.   |
+| UpdateGame | 404   | Game not found. Input valid steamAppId.   |
+| DeleteGame | 404   | Game not found. Input valid steamAppId.   |
 
 ## Screenshots
 

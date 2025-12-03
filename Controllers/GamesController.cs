@@ -76,6 +76,30 @@ public class GamesController
         return response;
     }
 
+    [Function("GetGameByTitle")]
+    public async Task<HttpResponseData> GetGameByTitle(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "games/{title}")] 
+        HttpRequestData req, 
+        string title)
+    {
+        var authResponse = ValidateApiKey(req);
+        if (authResponse != null) return authResponse;
+
+        _logger.LogInformation($"Processing GetGameByTitle: {title}");
+
+        var game = await _context.Games.FirstOrDefaultAsync(g => g.Title == title);
+
+        if (game == null)
+        {
+            _logger.LogWarning($"Game with title {title} not found.");
+            return req.CreateResponse(HttpStatusCode.NotFound);
+        }
+
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        await response.WriteAsJsonAsync(game);
+        return response;
+    }
+
     [Function("CreateGame")]
     public async Task<HttpResponseData> CreateGame(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "games")] 

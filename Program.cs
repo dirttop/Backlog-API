@@ -9,6 +9,8 @@ using Azure.Security.KeyVault.Secrets;
 using BacklogAPI.Helpers;
 using BacklogAPI.Data;
 using System;
+using Microsoft.Data.SqlClient;
+using Azure.Core;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -28,7 +30,6 @@ if (!string.IsNullOrEmpty(managedIdentityClientId))
 var credential = (options == null) 
     ? new DefaultAzureCredential() 
     : new DefaultAzureCredential(options);
-
 
 builder.Configuration.AddAzureKeyVault(kvUri, credential);
 
@@ -50,9 +51,19 @@ if (string.IsNullOrEmpty(apiKey))
     throw new InvalidOperationException("Could not retrieve 'ApiKey' from configuration (Key Vault).");
 }
 
+var authProvider = new AzureSqlAuthProvider(credential);
+SqlAuthenticationProvider.SetProvider(SqlAuthenticationMethod.ActiveDirectoryDefault, authProvider);
+builder.Services.AddSingleton<SqlAuthenticationProvider>(authProvider);
+
 builder.Services.AddDbContext<ApplicationDbContext>(opt =>
 {
-    opt.UseSqlServer(connectionString);
+    opt.UseSqlServer(connectionString, sqlOptions =>
+    {
+        sqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 3,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorNumbersToAdd: null);
+    });
 });
 
 builder.Services.AddSingleton(new ApiKeySettings { ApiKey = apiKey });
@@ -65,3 +76,27 @@ builder.Services.AddSingleton<IKVHelper, KVHelper>();
 
 
 builder.Build().Run();
+
+public class AzureSqlAuthProvider : SqlAuthenticationProvider
+{
+    private readonly TokenCredential _credential;
+    private static readonly string[] _azureSqlScopes = new[] { "https://database.windows.net/.default" };
+
+    public AzureSqlAuthProvider(TokenCredential credential)
+    {
+        _credential = credential;
+    }
+
+    public override async Task<SqlAuthenticationToken> AcquireTokenAsync(SqlAuthenticationParameters parameters)
+    {
+        var tokenRequestContext = new TokenRequestContext(_azureSqlScopes);
+        var accessToken = await _credential.GetTokenAsync(tokenRequestContext, default);
+        return new SqlAuthenticationToken(accessToken.Token, accessToken.ExpiresOn);
+    }
+
+    public override bool IsSupported(SqlAuthenticationMethod authenticationMethod)
+    {
+        return authenticationMethod == SqlAuthenticationMethod.ActiveDirectoryDefault
+            || authenticationMethod == SqlAuthenticationMethod.ActiveDirectoryManagedIdentity;
+    }
+}
