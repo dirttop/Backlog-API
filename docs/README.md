@@ -114,16 +114,6 @@ For Linux: ``` curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash ```
 
 ### Key Vault Setup
 
-1.  **Create Key Vault**: Create a new Key Vault resource in your Azure Resource Group.
-2.  **Add Secrets**:
-    *   `ApiKey`: A strong, random string to be used as your API Key.
-    *   `DefaultConnection`: Your Azure SQL Database connection string.
-3.  **Managed Identity**:
-    *   Enable **System Assigned Identity** on your Function App.
-    *   Go to your Key Vault -> **Access Control (IAM)** -> **Add Role Assignment**.
-    *   Assign the **Key Vault Secrets User** role to your Function App's identity.
-    *   *Note: For local development, ensure your personal Azure account also has this role.*
-
 ### Running Locally
 
 > **Prerequisite:** You must have the `KEY_VAULT_NAME` environment variable set and be logged in via Azure CLI (`az login`) to access the Key Vault.
@@ -189,6 +179,11 @@ This API implements several governance and security features to ensure that the 
 * This field provides a clear audit trail through MS Teams messages. This shows when the data was last checked against business rules, ensuring the backlog remains clean. 
 
 ## Screenshots
+
+
+### Sample Dashboard Setup
+> Dashboard can be used to get a quick overview of application health and can be customized to your need.
+<img width="2460" height="1206" alt="image" src="https://github.com/user-attachments/assets/e69b5ed4-1fb8-4baa-b3cb-81af14af632c" />
 
 
 ## Using the Backlog API
@@ -412,13 +407,15 @@ Game with steamAppId: 730 deleted successfully.
 
 | Endpoint | Code    | Message    |
 | :---:   | :---: | :---: |
-| All | 401   | Unauthorized   |
-| CreateGame | 400   | Title and unique non-zero steamAppId are required.   |
-| CreateGame | 400   | A game with this steamAppId already exists.   |
-| GetGameByID | 404   | Game not found. Input valid steamAppId.   |
-| UpdateGame | 400   | Invalid game data.   |
-| UpdateGame | 404   | Game not found. Input valid steamAppId.   |
-| DeleteGame | 404   | Game not found. Input valid steamAppId.   |
+| All | 401   | Unauthorized |
+| All | 404 | None (Incorrect Endpoint URL) |
+| CreateGame | 400   | Could not deserialize request body:    |
+| CreateGame | 409   | Game with SteamAppId {newGame.SteamAppId} already exists. |
+| GetGameByID | 404   | Game with id {id} not found.   |
+| GetGameByTitle | 404 | Game 
+| UpdateGame | 400   | Invalid game data. |
+| UpdateGame | 404   | Game with id {id} not found. |
+| DeleteGame | 404   | Game with id {id} not found.   |
 
 ## Screenshots
 
@@ -437,6 +434,8 @@ Game with steamAppId: 730 deleted successfully.
 <img width="981" height="238" alt="Screenshot 2025-10-09 at 10 27 53 PM" src="https://github.com/user-attachments/assets/c06edc68-f4ee-4628-9ed5-1e97fd4ab145" />
 <img width="970" height="247" alt="Screenshot 2025-10-09 at 10 28 10 PM" src="https://github.com/user-attachments/assets/235ed308-52ca-4d6f-916c-8846b2093bd7" />
 
+### GetGameByTitle
+
 ### UpdateGame
 <img width="948" height="288" alt="Screenshot 2025-10-09 at 10 29 03 PM" src="https://github.com/user-attachments/assets/ea50888c-1340-44ae-930a-ef448a660e9e" />
 <img width="989" height="285" alt="Screenshot 2025-10-09 at 10 29 25 PM" src="https://github.com/user-attachments/assets/9b2d2849-071f-46e9-8a7d-14968a83a2f1" />
@@ -445,6 +444,14 @@ Game with steamAppId: 730 deleted successfully.
 <img width="982" height="181" alt="Screenshot 2025-10-09 at 10 29 45 PM" src="https://github.com/user-attachments/assets/303e27e9-1d10-4f6d-a54a-3a65271d9886" />
 <img width="978" height="193" alt="Screenshot 2025-10-09 at 10 30 07 PM" src="https://github.com/user-attachments/assets/a02e0dfe-0572-446a-8d03-af1235a7f175" />
 
+### ValidateGames
+<img width="2184" height="532" alt="image" src="https://github.com/user-attachments/assets/ea2744b9-3692-4962-afd7-8c97cedac915" />
+<img width="2182" height="506" alt="image" src="https://github.com/user-attachments/assets/e55773b4-cc40-4b4f-861a-9ce5a5c4266a" />
+
 ## Sources
 
 [Boilerplate](https://medium.com/dynamics-online/how-to-build-rest-apis-with-azure-functions-b4d26c88aa1d) by Fahad Ahmed
+
+[Video 1 on ASP.NET API](https://www.youtube.com/watch?v=0J_T5qRynSI&t=3457s) by ABi Helpline
+
+[Video 2 on ASP.NET API](https://www.youtube.com/watch?v=6YIRKBsRWVI&t=1318s) by Sameer Saini
