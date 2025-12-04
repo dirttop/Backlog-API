@@ -5,8 +5,11 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.DataContracts;
 using System.Net;
 using System.Linq;
+using System.Collections.Generic;
 
 namespace BacklogAPI.Controllers;
 
@@ -16,12 +19,15 @@ public class GamesController
     private readonly ILogger<GamesController> _logger;
     private readonly IKVHelper _kvHelper;
     private readonly ApiKeySettings _apiKeySettings;
-    public GamesController(ApplicationDbContext context, ILogger<GamesController> logger, IKVHelper kvHelper, ApiKeySettings apiKeySettings)
+    private readonly TelemetryClient _telemetryClient;
+
+    public GamesController(ApplicationDbContext context, ILogger<GamesController> logger, IKVHelper kvHelper, ApiKeySettings apiKeySettings, TelemetryClient telemetryClient)
     {
         _context = context;
         _logger = logger;
         _kvHelper = kvHelper;
         _apiKeySettings = apiKeySettings;
+        _telemetryClient = telemetryClient;
     }
 
     private HttpResponseData? ValidateApiKey(HttpRequestData req)
@@ -29,6 +35,7 @@ public class GamesController
         if (!req.Headers.TryGetValues("X-Api-Key", out var values) || values.FirstOrDefault() != _apiKeySettings.ApiKey)
         {
             _logger.LogWarning("Invalid or missing API key.");
+            _telemetryClient.TrackEvent("UnauthorizedAccessAttempt");
             return req.CreateResponse(HttpStatusCode.Unauthorized);
         }
         
@@ -68,6 +75,7 @@ public class GamesController
         if (game == null)
         {
             _logger.LogWarning($"Game with id {id} not found.");
+            _telemetryClient.TrackEvent("GameNotFound", new Dictionary<string, string> { { "GameId", id.ToString() } });
             return req.CreateResponse(HttpStatusCode.NotFound);
         }
 
@@ -92,6 +100,7 @@ public class GamesController
         if (game == null)
         {
             _logger.LogWarning($"Game with title {title} not found.");
+            _telemetryClient.TrackEvent("GameNotFound", new Dictionary<string, string> { { "Title", title } });
             return req.CreateResponse(HttpStatusCode.NotFound);
         }
 
@@ -123,12 +132,14 @@ public class GamesController
             if (existingGameCheck != null)
             {
                 _logger.LogWarning($"Game with SteamAppId {newGame.SteamAppId} already exists.");
+                _telemetryClient.TrackEvent("GameCreationConflict", new Dictionary<string, string> { { "SteamAppId", newGame.SteamAppId.ToString() } });
                 return req.CreateResponse(HttpStatusCode.Conflict);
             }
         }
         catch (Exception ex)
         {
             _logger.LogError($"Could not deserialize request body: {ex.Message}");
+            _telemetryClient.TrackException(ex);
             return req.CreateResponse(HttpStatusCode.BadRequest);
         }
 
@@ -137,6 +148,8 @@ public class GamesController
             await _context.Games.AddAsync(newGame);
             await _context.SaveChangesAsync();
 
+            _telemetryClient.TrackEvent("GameCreated", new Dictionary<string, string> { { "Title", newGame.Title }, { "SteamAppId", newGame.SteamAppId.ToString() } });
+
             var response = req.CreateResponse(HttpStatusCode.Created);
             await response.WriteAsJsonAsync(newGame);
             return response;
@@ -144,6 +157,7 @@ public class GamesController
         catch (Exception ex)
         {
             _logger.LogError($"Error creating game: {ex.Message}");
+            _telemetryClient.TrackException(ex);
             return req.CreateResponse(HttpStatusCode.InternalServerError);
         }
     }
@@ -178,6 +192,7 @@ public class GamesController
         catch (Exception ex)
         {
             _logger.LogError($"Could not deserialize request body: {ex.Message}");
+            _telemetryClient.TrackException(ex);
             return req.CreateResponse(HttpStatusCode.BadRequest);
         }
 
@@ -185,6 +200,12 @@ public class GamesController
         existingGame.Genre = updatedGame.Genre;
         existingGame.Developer = updatedGame.Developer;
         existingGame.ReleaseYear = updatedGame.ReleaseYear;
+    
+        if (!existingGame.Completed && updatedGame.Completed)
+        {
+             _telemetryClient.TrackEvent("GameCompleted", new Dictionary<string, string> { { "Title", existingGame.Title }, { "GameId", id.ToString() } });
+        }
+
         existingGame.Completed = updatedGame.Completed;
         existingGame.CompletedOn = updatedGame.CompletedOn;
         existingGame.Dropped = updatedGame.Dropped;
@@ -193,6 +214,8 @@ public class GamesController
         existingGame.Review = updatedGame.Review;
 
         await _context.SaveChangesAsync();
+
+        _telemetryClient.TrackEvent("GameUpdated", new Dictionary<string, string> { { "GameId", id.ToString() } });
 
         var response = req.CreateResponse(HttpStatusCode.OK);
         await response.WriteAsJsonAsync(existingGame);
@@ -219,6 +242,8 @@ public class GamesController
 
         _context.Games.Remove(gameToDelete);
         await _context.SaveChangesAsync();
+
+        _telemetryClient.TrackEvent("GameDeleted", new Dictionary<string, string> { { "Title", gameToDelete.Title }, { "GameId", id.ToString() } });
 
         return req.CreateResponse(HttpStatusCode.NoContent);
     }
@@ -275,6 +300,8 @@ public class GamesController
         {
             await _context.SaveChangesAsync();
         }
+
+        _telemetryClient.TrackEvent("ValidationTriggered", null, new Dictionary<string, double> { { "UpdatedCount", updatedCount }, { "TotalGames", allGames.Count } });
 
         var response = req.CreateResponse(HttpStatusCode.OK);
         var result = new

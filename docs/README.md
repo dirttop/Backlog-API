@@ -119,9 +119,10 @@ For Linux: ``` curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash ```
     *   `ApiKey`: A strong, random string to be used as your API Key.
     *   `DefaultConnection`: Your Azure SQL Database connection string.
 3.  **Managed Identity**:
-    *   Enable **System Assigned Identity** on your Function App.
-    *   Go to your Key Vault -> **Access Control (IAM)** -> **Add Role Assignment**.
-    *   Assign the **Key Vault Secrets User** role to your Function App's identity.
+    *   **User Assigned Identity**: Create a User Assigned Managed Identity in Azure.
+    *   **Configuration**: Set the `MANAGED_IDENTITY_CLIENT_ID` environment variable in your Function App to the Client ID of your User Assigned Identity.
+    *   **Key Vault Access**: Go to your Key Vault -> **Access Control (IAM)** -> **Add Role Assignment**.
+    *   Assign the **Key Vault Secrets User** role to your User Assigned Identity.
     *   *Note: For local development, ensure your personal Azure account also has this role.*
 
 ### Running Locally
@@ -187,6 +188,55 @@ This API implements several governance and security features to ensure productio
 #### 3. Validation Timestamping
 *   **Data Integrity**: The `ValidateGames` endpoint updates the `validatedOn` timestamp for every game entity it processes.
 *   **Lifecycle Management**: This field provides a clear audit trail of when the data was last checked against business rules, ensuring the backlog remains up-to-date. 
+
+### Application Insights Integration
+
+The API is fully integrated with Azure Application Insights for advanced telemetry and monitoring.
+
+#### Custom Telemetry
+We track specific business events to gain insights into user behavior and system performance:
+
+*   `GameCreated`: Triggered when a new game is added.
+*   `GameUpdated`: Triggered when a game's details are modified.
+*   `GameCompleted`: Triggered specifically when a game is marked as completed.
+*   `GameDeleted`: Triggered when a game is removed.
+*   `ValidationTriggered`: Logs the execution of the bulk validation process.
+*   `GameNotFound`: Logs attempts to access non-existent games.
+*   `UnauthorizedAccessAttempt`: Logs failed API key validations.
+
+#### Sample KQL Queries
+Use these queries in the Application Insights Logs blade:
+
+**View Recent Custom Events:**
+```kusto
+customEvents
+| project timestamp, name, customDimensions
+| order by timestamp desc
+```
+
+**Analyze Game Completions:**
+```kusto
+customEvents
+| where name == "GameCompleted"
+| project timestamp, GameTitle = customDimensions.Title, GameId = customDimensions.GameId
+```
+
+**Monitor Validation Results:**
+```kusto
+customEvents
+| where name == "ValidationTriggered"
+| extend UpdatedCount = toint(customDimensions.UpdatedCount), TotalGames = toint(customDimensions.TotalGames)
+| project timestamp, UpdatedCount, TotalGames
+```
+
+### Logic App Integration
+
+An Azure Logic App is used to automate the validation of the game backlog.
+
+*   **Trigger**: Recurrence trigger (e.g., runs daily or weekly).
+*   **Action**: Calls the `PATCH /api/games/validate` endpoint.
+*   **Authentication**: Uses Managed Identity to securely authenticate with the API.
+*   **Purpose**: Ensures that all game records adhere to business rules (e.g., auto-completing games with reviews) without manual intervention. 
 
 
 
