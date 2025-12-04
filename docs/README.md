@@ -89,8 +89,8 @@ For Linux: ``` curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash ```
 
 ``` 
   "Values": {
-  ...
-  "DefaultConnection": "STRING HERE";
+    ...
+    "DefaultConnection": "STRING HERE"
   }
 ```
 
@@ -149,7 +149,7 @@ For Linux: ``` curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash ```
 
 &emsp;Within the Key Vault under Access Control (IAM) add the Key Vault Secret Officer role to your newly System Assigned Function App member.
 
-&emsp;Then, add a Secret to the Function App named 'KEY_VAULT_NAME' with the name of your Key Vault resource.
+&emsp;Then, add an Environment Variable to the Function App named 'KEY_VAULT_NAME' with the name of your Key Vault resource.
 
 &emsp;Under the Database Server, go to the Security section and open the Networking tab. Under exceptions, check 'Allow Azure services and resources to access this server'.
 
@@ -173,21 +173,21 @@ ALTER ROLE db_datawriter ADD MEMBER [FUNCTION APP NAME];
 
 ### Governance Features
 
-This API implements several governance and security features to ensure production-grade reliability and auditability.
+This API implements several governance and security features to ensure that the API is following best practice for cloud-native applications.
 
-#### 1. API Key Management via Azure Key Vault
-*   **Implementation**: The API Key is never stored in source control or configuration files. It is securely stored in Azure Key Vault as a secret named `ApiKey`.
-*   **Access**: The Function App retrieves this key at runtime using **Managed Identity**, ensuring zero-trust security.
-*   **Rotation**: This setup allows for easy key rotation without redeploying the application code.
+#### 1. Secret Management w/ Azure Key Vault
+* The API Key is never stored in config files. It is securely stored in Azure Key Vault as a secret named `ApiKey`.
+* The Function App retrieves this key at runtime using User Assigned Managed Identity.
+* This setup allows for easy key changes without redeploying.
 
-#### 2. Diagnostic Logging with Application Insights
-*   **Observability**: Application Insights is integrated to track request rates, failures, and performance metrics.
-*   **Traceability**: `ILogger` is used throughout the application to log critical events (e.g., "Processing CreateGame").
-*   **Auditing**: Failed requests and exceptions are captured with full stack traces to support debugging and security auditing.
+#### 2. Logging w/ Application Insights
+* Application Insights is integrated to track request rates, failures, and performance metrics.
+* `ILogger` is used throughout the application to log critical events.
+* Failed requests and exceptions are captured with traces to support debugging and security.
 
 #### 3. Validation Timestamping
-*   **Data Integrity**: The `ValidateGames` endpoint updates the `validatedOn` timestamp for every game entity it processes.
-*   **Lifecycle Management**: This field provides a clear audit trail of when the data was last checked against business rules, ensuring the backlog remains up-to-date. 
+* The `ValidateGames` endpoint updates the `validatedOn` timestamp for every game entity it processes.
+* This field provides a clear audit trail through MS Teams messages. This shows when the data was last checked against business rules, ensuring the backlog remains clean. 
 
 ### Application Insights Integration
 
@@ -241,10 +241,6 @@ An Azure Logic App is used to automate the validation of the game backlog.
 
 
 ## Using the Backlog API
-
-### URL
-
->**games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net**
 
 ### Authentication
 
@@ -330,7 +326,7 @@ curl -X POST "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.
 #### Request
 #### bash / zsh
 ```
-curl -L -X GET "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games/"
+curl -L -X GET "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games/" \
 -H "X-Api-Key: INSERT_KEY_HERE"
 ```
 #### Response (JSON)
@@ -365,7 +361,7 @@ curl -L -X GET "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsite
 
 #### bash / zsh
 ```
-curl -L -X GET "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games/{steamAppId:int}"
+curl -L -X GET "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games/{steamAppId:int}" \
 -H "X-Api-Key: INSERT_KEY_HERE"
 ```
 #### Response (JSON)
@@ -389,7 +385,7 @@ curl -L -X GET "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsite
 
 #### bash / zsh
 ```
-curl -L -X GET "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games/{title}"
+curl -L -X GET "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games/{title}" \
 -H "X-Api-Key: INSERT_KEY_HERE"
 ```
 #### Response (JSON)
@@ -444,7 +440,7 @@ curl -X PUT "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.n
 #### Request
 #### bash / zsh
 ```
-curl -L -X DELETE "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games/{steamAppId:int}"
+curl -L -X DELETE "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games/{steamAppId:int}" \
 -H "X-Api-Key: INSERT_KEY_HERE"
 ```
 #### Response
@@ -465,13 +461,15 @@ Game with steamAppId: 730 deleted successfully.
 
 | Endpoint | Code    | Message    |
 | :---:   | :---: | :---: |
-| All | 401   | Unauthorized   |
-| CreateGame | 400   | title and unique non-zero steamAppId are required.   |
-| CreateGame | 400   | A game with this steamAppId already exists.   |
-| GetGameByID | 404   | Game not found. Input valid steamAppId.   |
-| UpdateGame | 400   | Invalid game data.   |
-| UpdateGame | 404   | Game not found. Input valid steamAppId.   |
-| DeleteGame | 404   | Game not found. Input valid steamAppId.   |
+| All | 401   | Unauthorized |
+| All | 404 | None (Incorrect Endpoint URL) |
+| CreateGame | 400   | Could not deserialize request body:    |
+| CreateGame | 409   | Game with SteamAppId {newGame.SteamAppId} already exists. |
+| GetGameByID | 404   | Game with id {id} not found.   |
+| GetGameByTitle | 404 | Game 
+| UpdateGame | 400   | Invalid game data. |
+| UpdateGame | 404   | Game with id {id} not found. |
+| DeleteGame | 404   | Game with id {id} not found.   |
 
 ## Screenshots
 
@@ -490,6 +488,8 @@ Game with steamAppId: 730 deleted successfully.
 <img width="981" height="238" alt="Screenshot 2025-10-09 at 10 27 53 PM" src="https://github.com/user-attachments/assets/c06edc68-f4ee-4628-9ed5-1e97fd4ab145" />
 <img width="970" height="247" alt="Screenshot 2025-10-09 at 10 28 10 PM" src="https://github.com/user-attachments/assets/235ed308-52ca-4d6f-916c-8846b2093bd7" />
 
+### GetGameByTitle
+
 ### UpdateGame
 <img width="948" height="288" alt="Screenshot 2025-10-09 at 10 29 03 PM" src="https://github.com/user-attachments/assets/ea50888c-1340-44ae-930a-ef448a660e9e" />
 <img width="989" height="285" alt="Screenshot 2025-10-09 at 10 29 25 PM" src="https://github.com/user-attachments/assets/9b2d2849-071f-46e9-8a7d-14968a83a2f1" />
@@ -498,6 +498,14 @@ Game with steamAppId: 730 deleted successfully.
 <img width="982" height="181" alt="Screenshot 2025-10-09 at 10 29 45 PM" src="https://github.com/user-attachments/assets/303e27e9-1d10-4f6d-a54a-3a65271d9886" />
 <img width="978" height="193" alt="Screenshot 2025-10-09 at 10 30 07 PM" src="https://github.com/user-attachments/assets/a02e0dfe-0572-446a-8d03-af1235a7f175" />
 
+### ValidateGames
+<img width="2184" height="532" alt="image" src="https://github.com/user-attachments/assets/ea2744b9-3692-4962-afd7-8c97cedac915" />
+<img width="2182" height="506" alt="image" src="https://github.com/user-attachments/assets/e55773b4-cc40-4b4f-861a-9ce5a5c4266a" />
+
 ## Sources
 
 [Boilerplate](https://medium.com/dynamics-online/how-to-build-rest-apis-with-azure-functions-b4d26c88aa1d) by Fahad Ahmed
+
+[Video 1 on ASP.NET API](https://www.youtube.com/watch?v=0J_T5qRynSI&t=3457s) by ABi Helpline
+
+[Video 2 on ASP.NET API](https://www.youtube.com/watch?v=6YIRKBsRWVI&t=1318s) by Sameer Saini
