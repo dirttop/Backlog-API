@@ -1,5 +1,5 @@
 # Backlog API
-### Version 2.1
+### Version 2 (Stable)
 
 C# REST API with CRUD operations, deployed using Azure Function App. 
 Developed for CS-432, Cloud Computing at Sacred Heart University
