@@ -456,7 +456,11 @@ Game with steamAppId: 730 deleted successfully.
 
 >**PATCH /api/games/validate**
 
-&emsp;Ensure games all follow predefined business rules.
+&emsp;Ensure games all follow predefined business rules. The rules are as follows:
+
+- If a game is marked as completed, but it's release year is in the future, it is set to incomplete.
+- If a game has a rating and/or review, but it is set incomplete, set to complete.
+- If a game is set to complete AND set to drop, prioritize completion and set to complete.
 
 #### Request
 #### bash / zsh
