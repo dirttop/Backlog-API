@@ -5,7 +5,7 @@ C# REST API with CRUD operations, deployed using Azure Function App.
 Developed for CS-432, Cloud Computing at Sacred Heart University
 
 ## Version Specific Features
-- ValidateGames PATCH endpoint
+- Custom Telemetery
 
 ## Introduction
 
@@ -29,6 +29,7 @@ This section will get you started with deploying the API to Microsoft Azure for 
 ### Recommended Packages For Testing
 - Thunder Client
 - Postman
+- Azure CLI
 
 ### Setup
 
@@ -59,7 +60,11 @@ For Mac: ``` brew update && brew install azure-cli ```
 
 For Linux: ``` curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash ```
 
-### Project Structure
+This is for a fresh start. Clone the repo to get exact source code.
+
+### Project Structure and Architecture
+
+<img width="1626" height="809" alt="image" src="https://github.com/user-attachments/assets/cc7d599d-1291-441e-8634-c5f5e18932da" />
 
 **Models** - Defines the data structure and business entities (e.g., `Game.cs`).
 
@@ -112,6 +117,14 @@ For Linux: ``` curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash ```
 
 &emsp;This will create a new migration, which should be reflected with a new table in your database. You can now move on to testing locally.
 
+&emsp;Finally, within your Database resource under the Query Editor, run the following query to allow the Function App access to the database.
+
+``` 
+CREATE USER [FUNCTION APP NAME] FROM EXTERNAL PROVIDER;
+ALTER ROLE db_datareader ADD MEMBER [FUNCTION APP NAME];
+ALTER ROLE db_datawriter ADD MEMBER [FUNCTION APP NAME];
+```
+
 ### Key Vault Setup
 
 1.  **Create Key Vault**: Create a new Key Vault resource in your Azure Resource Group.
@@ -139,27 +152,7 @@ For Linux: ``` curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash ```
 
 &emsp;Create a Function App within Azure prior to deploying with desired settings.
 
-&emsp;Then, within the Function App, under Identity enable System Assigned Identity. 
-
-&emsp;Now we need to set up a Key Vault and Managed Identities. Create a new Key Vault resource under your API Resource Group.
-
-&emsp;In the Key Vault add two new secrets
-- ApiKey (With any Key string)
-- DefaultConnection (Connection string can be found under the SQL Database)
-
-&emsp;Within the Key Vault under Access Control (IAM) add the Key Vault Secret Officer role to your newly System Assigned Function App member.
-
-&emsp;Then, add an Environment Variable to the Function App named 'KEY_VAULT_NAME' with the name of your Key Vault resource.
-
-&emsp;Under the Database Server, go to the Security section and open the Networking tab. Under exceptions, check 'Allow Azure services and resources to access this server'.
-
-&emsp;Finally, within your Database resource under the Query Editor, run the following query to allow the Function App access to the database.
-
-``` 
-CREATE USER [FUNCTION APP NAME] FROM EXTERNAL PROVIDER;
-ALTER ROLE db_datareader ADD MEMBER [FUNCTION APP NAME];
-ALTER ROLE db_datawriter ADD MEMBER [FUNCTION APP NAME];
-```
+&emsp;Then, within the Function App, under Identity assign your previously created User Assigned Managed Identity to the Function App. 
 
 &emsp;Then, navigate to the Azure Functions button in your local workspace and select 'Deploy to Azure'
 
@@ -173,7 +166,7 @@ ALTER ROLE db_datawriter ADD MEMBER [FUNCTION APP NAME];
 
 ### Governance Features
 
-This API implements several governance and security features to ensure that the API is following best practice for cloud-native applications.
+This API implements governance features to ensure that the API is following best practice for cloud-native applications.
 
 #### 1. Secret Management w/ Azure Key Vault
 * The API Key is never stored in config files. It is securely stored in Azure Key Vault as a secret named `ApiKey`.
@@ -187,14 +180,16 @@ This API implements several governance and security features to ensure that the 
 
 #### 3. Validation Timestamping
 * The `ValidateGames` endpoint updates the `validatedOn` timestamp for every game entity it processes.
-* This field provides a clear audit trail through MS Teams messages. This shows when the data was last checked against business rules, ensuring the backlog remains clean. 
+* This field provides audit logging through MS Teams messages. This shows when the data was last checked against business rules, ensuring the backlog remains clean. 
 
 ### Application Insights Integration
 
-The API is fully integrated with Azure Application Insights for advanced telemetry and monitoring.
+This API is fully integrated with Azure Application Insights for telemetry and monitoring.
+
+<img width="1965" height="908" alt="image" src="https://github.com/user-attachments/assets/fd26ccef-b1a6-498f-a526-6ea5ac6933e0" />
 
 #### Custom Telemetry
-We track specific business events to gain insights into user behavior and system performance:
+It tracks specific events to gain insights into system performance:
 
 *   `GameCreated`: Triggered when a new game is added.
 *   `GameUpdated`: Triggered when a game's details are modified.
@@ -205,7 +200,7 @@ We track specific business events to gain insights into user behavior and system
 *   `UnauthorizedAccessAttempt`: Logs failed API key validations.
 
 #### Sample KQL Queries
-Use these queries in the Application Insights Logs blade:
+These KQL Queries can be used to test Custom Telemetry:
 
 **View Recent Custom Events:**
 ```kusto
@@ -233,12 +228,20 @@ customEvents
 
 An Azure Logic App is used to automate the validation of the game backlog.
 
-*   **Trigger**: Recurrence trigger (e.g., runs daily or weekly).
+*   **Trigger**: Recurrence trigger.
 *   **Action**: Calls the `PATCH /api/games/validate` endpoint.
 *   **Authentication**: Uses Managed Identity to securely authenticate with the API.
-*   **Purpose**: Ensures that all game records adhere to business rules (e.g., auto-completing games with reviews) without manual intervention. 
+*   **Purpose**: Ensures that all game records adhere to business rules without manual intervention.
 
+The following is a sample Logic App layout to integrate automatic validation.
+<img width="623" height="780" alt="image" src="https://github.com/user-attachments/assets/006f3715-507c-4833-8295-4df8a35773db" />
 
+Run history can be tracked under Overview.
+<img width="974" height="295" alt="image" src="https://github.com/user-attachments/assets/dc92399b-f872-4f32-b1ec-8138d49dad0b" />
+
+### Sample Dashboard
+> Use for further Governence and quickly checking application health.
+<img width="2003" height="839" alt="image" src="https://github.com/user-attachments/assets/6cf3e76f-0f1a-4c9a-9627-5dcc12084dcf" />
 
 ## Using the Backlog API
 
