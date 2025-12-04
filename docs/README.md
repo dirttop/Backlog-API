@@ -1,5 +1,5 @@
 # Backlog API
-### Version 2.0
+### Version 2.1
 
 C# REST API with CRUD operations, deployed using Azure Function App. 
 Developed for CS-432, Cloud Computing at Sacred Heart University
@@ -454,6 +454,22 @@ Game with steamAppId: 730 deleted successfully.
 >**PATCH /api/games/validate**
 
 &emsp;Ensure games all follow predefined business rules.
+
+#### Request
+#### bash / zsh
+```
+curl -X PATCH "https://games-api-a0gveveefgdyfcap.canadacentral-01.azurewebsites.net/api/games/validate" \
+-H "X-Api-Key: INSERT_KEY_HERE"
+```
+#### Response (JSON)
+#### Code: 200
+```
+{
+    "updatedCount": 5,
+    "timestamp": "2025-10-31T13:00:00Z",
+    "message": "Validation complete. 5 games updated."
+}
+```
 
 ## Possible Errors
 
