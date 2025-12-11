@@ -301,8 +301,13 @@ public class GamesController
             await _context.SaveChangesAsync();
         }
 
-        _telemetryClient.TrackEvent("ValidationTriggered", null, new Dictionary<string, double> { { "UpdatedCount", updatedCount }, { "TotalGames", allGames.Count } });
-
+        var properties = new Dictionary<string, string>
+        {
+            { "UpdatedCount", updatedCount.ToString() },
+            { "TotalGames", allGames.Count.ToString() }
+        };
+        _telemetryClient.TrackEvent("ValidationTriggered", properties, null);
+        
         var response = req.CreateResponse(HttpStatusCode.OK);
         var result = new
         {

@@ -21,3 +21,4 @@ public class Game
     public string? Review { get; set; }
     public DateTime? ValidatedOn { get; set;}
 }
+
