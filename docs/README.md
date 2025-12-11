@@ -9,7 +9,7 @@ Developed for CS-432, Cloud Computing at Sacred Heart University
 
 ## Introduction
 
-This API is for cataloguing and tracking Steam Games in your backlog. For stable builds look to version branches. The main branch is unstable and may be subject to changes. To find the companion front-end interface [go here](https://github.com/dirttop/Backlog-Interface).
+This API is for cataloguing and tracking Steam Games in your backlog. For stable builds look to version branches. The main branch is unstable and may be subject to changes. To find the companion front-end interface go [here](https://github.com/dirttop/Backlog-Interface).
 
 ## Getting Started
 This section will get you started with deploying the API to Microsoft Azure for use.
@@ -241,7 +241,7 @@ Run history can be tracked under Overview.
 
 ### Sample Dashboard
 > Use for further Governence and quickly checking application health.
-<img width="2003" height="839" alt="image" src="https://github.com/user-attachments/assets/6cf3e76f-0f1a-4c9a-9627-5dcc12084dcf" />
+<img width="1328" height="551" alt="Screenshot 2025-12-11 at 1 05 50 PM" src="https://github.com/user-attachments/assets/690aae60-59f7-4701-980e-85211d315d77" />
 
 ## Using the Backlog API
 
